@@ -1,0 +1,609 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Artwork Gallery</title>
+  <style>
+    :root {
+      --ink: #111115;
+      --paper: rgba(237, 239, 234, 0.78);
+      --line: rgba(17, 17, 21, 0.36);
+      --shadow: rgba(5, 6, 10, 0.34);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+      margin: 0;
+    }
+
+    body {
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      color: var(--ink);
+      background: #858ba0;
+      overflow-x: hidden;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .page {
+      position: relative;
+      min-height: 100svh;
+      display: grid;
+      align-items: center;
+      justify-items: end;
+      padding: clamp(24px, 4vw, 58px) clamp(24px, 5vw, 76px);
+      isolation: isolate;
+    }
+
+    .page::before {
+      content: "";
+      position: fixed;
+      inset: -18px;
+      z-index: -3;
+      background-image: url("assets/expanded-art-bg.png");
+      background-position: center;
+      background-size: cover;
+      background-repeat: no-repeat;
+    }
+
+    .page::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      background:
+        radial-gradient(circle at 50% 46%, rgba(238, 239, 233, 0.12), transparent 34%),
+        linear-gradient(90deg, rgba(16, 17, 22, 0.26), rgba(16, 17, 22, 0.05) 28%, rgba(16, 17, 22, 0.08) 72%, rgba(16, 17, 22, 0.28));
+      pointer-events: none;
+    }
+
+    .homepage-mark {
+      position: fixed;
+      left: 7vw;
+      top: 9vh;
+      z-index: 2;
+      width: clamp(120px, 13vw, 220px);
+      height: auto;
+      object-fit: contain;
+      opacity: 0.88;
+      filter: drop-shadow(0 18px 14px rgba(0, 0, 0, 0.34));
+      transition: left 7s ease-in-out, top 7s ease-in-out;
+      pointer-events: none;
+    }
+
+    .machine {
+      width: min(600px, 39vw);
+      display: grid;
+      gap: 18px;
+      transform: translateY(4vh);
+      animation: machineFloat 6.8s ease-in-out infinite;
+    }
+
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: clamp(10px, 1.2vw, 16px);
+      align-items: start;
+    }
+
+    .work-item {
+      display: grid;
+      gap: 8px;
+    }
+
+    .work-label {
+      justify-self: start;
+      font-size: clamp(16px, 1.4vw, 22px);
+      line-height: 1;
+      color: rgba(245, 246, 241, 0.82);
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.48);
+      transform: translateX(-8px);
+      animation: labelFlicker 4.2s ease-in-out infinite;
+    }
+
+    .slot {
+      position: relative;
+      aspect-ratio: 4 / 5;
+      min-height: 0;
+      max-height: 270px;
+      margin: 0;
+      border: 1.5px solid var(--line);
+      border-radius: 8px;
+      background:
+        linear-gradient(145deg, rgba(255, 255, 252, 0.74), rgba(214, 217, 214, 0.42)),
+        var(--paper);
+      box-shadow: 0 22px 54px var(--shadow);
+      overflow: hidden;
+      backdrop-filter: blur(7px);
+      animation: slotFloat 5.6s ease-in-out infinite;
+      animation-delay: var(--float-delay, 0s);
+    }
+
+    .slot::before {
+      content: "";
+      position: absolute;
+      inset: 13px;
+      z-index: 1;
+      border: 1px solid rgba(17, 17, 21, 0.28);
+      border-radius: 5px;
+      pointer-events: none;
+    }
+
+    .slot img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 180ms ease, filter 180ms ease;
+    }
+
+    .slot.is-spinning img {
+      filter: saturate(1.25) blur(1px);
+      transform: scale(1.06);
+    }
+
+    .slot.is-spinning {
+      animation: slotShake 180ms linear infinite;
+    }
+
+    .slot.is-winning {
+      border-color: rgba(245, 246, 241, 0.92);
+      box-shadow: 0 0 0 2px rgba(245, 246, 241, 0.22), 0 24px 60px var(--shadow);
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 14px;
+      min-height: 46px;
+    }
+
+    .action-button {
+      min-width: 112px;
+      min-height: 42px;
+      padding: 0 22px;
+      border: 1.5px solid rgba(245, 246, 241, 0.72);
+      border-radius: 999px;
+      color: rgba(245, 246, 241, 0.92);
+      background: rgba(10, 10, 13, 0.48);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      transition: transform 180ms ease, background 180ms ease, box-shadow 180ms ease;
+    }
+
+    .action-button:hover {
+      background: rgba(245, 246, 241, 0.18);
+      transform: translateY(-2px);
+      box-shadow: 0 16px 34px rgba(0, 0, 0, 0.34);
+    }
+
+    .action-button:disabled {
+      cursor: wait;
+      opacity: 0.62;
+    }
+
+    .world-button {
+      display: none;
+      border-color: rgba(255, 255, 255, 0.86);
+      color: #111115;
+      background: rgba(245, 246, 241, 0.86);
+    }
+
+    .world-button.is-visible {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      animation: buttonGlow 1.8s ease-in-out infinite;
+    }
+
+    .cat-entry {
+      justify-self: center;
+      width: clamp(86px, 9vw, 138px);
+      aspect-ratio: 1;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      position: relative;
+      filter:
+        drop-shadow(0 0 1px rgba(0, 0, 0, 0.95))
+        drop-shadow(0 0 0 rgba(0, 0, 0, 0.95))
+        drop-shadow(0 14px 16px rgba(0, 0, 0, 0.34));
+      animation: catEntryFloat 3.8s ease-in-out infinite;
+    }
+
+    .cat-entry::before {
+      content: "";
+      position: absolute;
+      inset: 8%;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle, rgba(255, 255, 255, 0.5), transparent 66%),
+        radial-gradient(circle, rgba(255, 255, 255, 0.22), transparent 58%);
+      opacity: 0;
+      transform: scale(0.78);
+      transition: opacity 260ms ease, transform 520ms ease;
+    }
+
+    .cat-entry img {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: contain;
+      transition: transform 260ms ease, filter 260ms ease;
+      filter:
+        drop-shadow(1px 0 0 rgba(0, 0, 0, 0.82))
+        drop-shadow(-1px 0 0 rgba(0, 0, 0, 0.82))
+        drop-shadow(0 1px 0 rgba(0, 0, 0, 0.82))
+        drop-shadow(0 -1px 0 rgba(0, 0, 0, 0.82));
+    }
+
+    .cat-entry:hover img {
+      transform: translateY(-3px) scale(1.04);
+      filter:
+        drop-shadow(1px 0 0 rgba(0, 0, 0, 0.88))
+        drop-shadow(-1px 0 0 rgba(0, 0, 0, 0.88))
+        drop-shadow(0 1px 0 rgba(0, 0, 0, 0.88))
+        drop-shadow(0 -1px 0 rgba(0, 0, 0, 0.88));
+    }
+
+    .cat-entry.is-opening::before {
+      opacity: 1;
+      transform: scale(1.18);
+      animation: catAura 850ms ease-in-out infinite alternate;
+    }
+
+    .cat-entry.is-opening img {
+      transform: scale(1.08);
+      filter:
+        drop-shadow(0 0 8px rgba(255, 255, 255, 0.95))
+        drop-shadow(0 0 24px rgba(255, 255, 255, 0.9))
+        drop-shadow(0 0 42px rgba(255, 255, 255, 0.62));
+    }
+
+    .cat-transition {
+      display: none;
+    }
+
+    .cat-transition img {
+      width: clamp(160px, 24vw, 320px);
+      filter:
+        drop-shadow(0 0 16px rgba(255, 255, 255, 0.82))
+        drop-shadow(0 0 42px rgba(255, 255, 255, 0.84));
+      transform: scale(0.82);
+      transition: transform 760ms cubic-bezier(0.16, 0.9, 0.2, 1);
+    }
+
+    .page.is-cat-opening .cat-transition {
+      opacity: 1;
+    }
+
+    .page.is-cat-opening .cat-transition img {
+      transform: scale(1.18);
+    }
+
+    @keyframes machineFloat {
+      0%,
+      100% {
+        transform: translateY(4vh);
+      }
+
+      50% {
+        transform: translateY(calc(4vh - 10px));
+      }
+    }
+
+    @keyframes slotFloat {
+      0%,
+      100% {
+        transform: translateY(0) rotate(-0.4deg);
+      }
+
+      50% {
+        transform: translateY(-7px) rotate(0.5deg);
+      }
+    }
+
+    @keyframes slotShake {
+      0%,
+      100% {
+        transform: translateX(0);
+      }
+
+      50% {
+        transform: translateX(2px);
+      }
+    }
+
+    @keyframes labelFlicker {
+      0%,
+      100% {
+        opacity: 0.72;
+      }
+
+      50% {
+        opacity: 1;
+      }
+    }
+
+    @keyframes buttonGlow {
+      0%,
+      100% {
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28), 0 0 0 rgba(245, 246, 241, 0);
+      }
+
+      50% {
+        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.32), 0 0 22px rgba(245, 246, 241, 0.42);
+      }
+    }
+
+    @keyframes catAura {
+      from {
+        box-shadow: 0 0 18px rgba(255, 255, 255, 0.34);
+      }
+
+      to {
+        box-shadow: 0 0 38px rgba(245, 246, 241, 0.74), 0 0 64px rgba(255, 255, 255, 0.58);
+      }
+    }
+
+    @keyframes catEntryFloat {
+      0%,
+      100% {
+        transform: translateY(0) scale(1);
+      }
+
+      50% {
+        transform: translateY(-7px) scale(1.035);
+      }
+    }
+
+    @media (max-width: 1180px) {
+      .machine {
+        width: min(520px, 45vw);
+      }
+    }
+
+    @media (max-width: 860px) {
+      .page {
+        align-items: center;
+        justify-items: center;
+        padding: 22px 14px;
+      }
+
+      .machine {
+        width: min(390px, 94vw);
+        max-width: 390px;
+        transform: none;
+        animation: none;
+      }
+
+      .gallery {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .controls {
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .work-label {
+        font-size: 12px;
+        transform: none;
+      }
+
+      .work-item {
+        gap: 6px;
+      }
+
+      .slot {
+        min-height: 0;
+        max-height: none;
+        border-radius: 6px;
+        box-shadow: 0 14px 30px rgba(5, 6, 10, 0.28);
+      }
+
+      .slot::before {
+        inset: 8px;
+      }
+
+      .action-button {
+        min-width: 92px;
+        min-height: 36px;
+        padding: 0 16px;
+        font-size: 13px;
+      }
+
+      .cat-entry {
+        width: 74px;
+      }
+
+      .homepage-mark {
+        width: clamp(82px, 22vw, 128px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="machine" aria-label="&#20316;&#21697;&#32769;&#34382;&#26426;">
+      <div class="gallery">
+        <div class="work-item">
+          <span class="work-label">&#65288;01&#65289;</span>
+          <figure class="slot" style="--float-delay:-0.4s;">
+            <img src="assets/gallery-work-01.jpg" alt="&#34013;&#33394;&#32972;&#26223;&#20154;&#29289;&#19982;&#29483;&#30340;&#32472;&#30011;&#20316;&#21697;">
+          </figure>
+        </div>
+        <div class="work-item">
+          <span class="work-label">&#65288;02&#65289;</span>
+          <figure class="slot" style="--float-delay:-1.2s;">
+            <img src="assets/gallery-work-02.png" alt="&#34013;&#21457;&#20154;&#29289;&#32472;&#30011;&#20316;&#21697;">
+          </figure>
+        </div>
+        <div class="work-item">
+          <span class="work-label">&#65288;03&#65289;</span>
+          <figure class="slot" style="--float-delay:-2s;">
+            <img src="assets/gallery-work-03.png" alt="&#34013;&#33394;&#32972;&#26223;&#20154;&#29289;&#25163;&#25345;&#31036;&#29289;&#30340;&#32472;&#30011;&#20316;&#21697;">
+          </figure>
+        </div>
+      </div>
+      <div class="controls">
+        <button class="action-button start-button" type="button">&#24320;&#22987;</button>
+        <button class="action-button world-button" type="button">aweii's world</button>
+      </div>
+      <button class="cat-entry" type="button" aria-label="Enter cat world">
+        <img src="assets/cat-world-entry.png" alt="">
+      </button>
+    </section>
+    <img class="homepage-mark" src="assets/homepage-overlay.png" alt="">
+    <div class="cat-transition" aria-hidden="true">
+      <img src="assets/cat-world-entry.png" alt="">
+    </div>
+  </main>
+
+  <script>
+    const buttonText = {
+      start: "\u5f00\u59cb",
+      spinning: "\u6eda\u52a8\u4e2d",
+      retry: "\u518d\u8bd5\u4e00\u6b21"
+    };
+
+    const artworks = [
+      {
+        src: "assets/gallery-work-01.jpg",
+        alt: "\u84dd\u8272\u80cc\u666f\u4eba\u7269\u4e0e\u732b\u7684\u7ed8\u753b\u4f5c\u54c1"
+      },
+      {
+        src: "assets/gallery-work-02.png",
+        alt: "\u84dd\u53d1\u4eba\u7269\u7ed8\u753b\u4f5c\u54c1"
+      },
+      {
+        src: "assets/gallery-work-03.png",
+        alt: "\u84dd\u8272\u80cc\u666f\u4eba\u7269\u624b\u6301\u793c\u7269\u7684\u7ed8\u753b\u4f5c\u54c1"
+      }
+    ];
+
+    const slots = [...document.querySelectorAll(".slot")];
+    const startButton = document.querySelector(".start-button");
+    const worldButton = document.querySelector(".world-button");
+    const homepageMark = document.querySelector(".homepage-mark");
+    const page = document.querySelector(".page");
+    const catEntry = document.querySelector(".cat-entry");
+    let isSpinning = false;
+
+    function setSlot(slot, artworkIndex) {
+      const image = slot.querySelector("img");
+      image.src = artworks[artworkIndex].src;
+      image.alt = artworks[artworkIndex].alt;
+      slot.dataset.result = artworkIndex;
+    }
+
+    function randomArtworkIndex() {
+      return Math.floor(Math.random() * artworks.length);
+    }
+
+    function createResults() {
+      if (Math.random() < 0.6) {
+        const winningIndex = randomArtworkIndex();
+        return [winningIndex, winningIndex, winningIndex];
+      }
+
+      return slots.map(() => randomArtworkIndex());
+    }
+
+    function clearResultState() {
+      worldButton.classList.remove("is-visible");
+      slots.forEach((slot) => slot.classList.remove("is-winning"));
+    }
+
+    function spinSlot(slot, stopDelay, finalIndex) {
+      slot.classList.add("is-spinning");
+
+      const interval = window.setInterval(() => {
+        setSlot(slot, randomArtworkIndex());
+      }, 90);
+
+      return new Promise((resolve) => {
+        window.setTimeout(() => {
+          window.clearInterval(interval);
+          setSlot(slot, finalIndex);
+          slot.classList.remove("is-spinning");
+          resolve(finalIndex);
+        }, stopDelay);
+      });
+    }
+
+    async function startMachine() {
+      if (isSpinning) {
+        return;
+      }
+
+      isSpinning = true;
+      clearResultState();
+      startButton.disabled = true;
+      startButton.textContent = buttonText.spinning;
+
+      const finalResults = createResults();
+      const results = await Promise.all([
+        spinSlot(slots[0], 1100, finalResults[0]),
+        spinSlot(slots[1], 1450, finalResults[1]),
+        spinSlot(slots[2], 1800, finalResults[2])
+      ]);
+
+      const isSame = results.every((result) => result === results[0]);
+
+      if (isSame) {
+        slots.forEach((slot) => slot.classList.add("is-winning"));
+        worldButton.classList.add("is-visible");
+        startButton.textContent = buttonText.start;
+      } else {
+        startButton.textContent = buttonText.retry;
+      }
+
+      startButton.disabled = false;
+      isSpinning = false;
+    }
+
+    slots.forEach((slot, index) => setSlot(slot, index));
+    startButton.addEventListener("click", startMachine);
+    worldButton.addEventListener("click", () => {
+      window.location.href = "aweii-world.html";
+    });
+
+    catEntry.addEventListener("click", () => {
+      window.location.href = "cat-world.html";
+    });
+
+    function moveHomepageMark() {
+      const markBox = homepageMark.getBoundingClientRect();
+      const padding = 24;
+      const maxX = Math.max(padding, window.innerWidth - markBox.width - padding);
+      const maxY = Math.max(padding, window.innerHeight - markBox.height - padding);
+      const travelX = Math.max(0, maxX - padding);
+      const travelY = Math.max(0, maxY - padding);
+      const nextX = padding + Math.random() * travelX;
+      const nextY = padding + Math.random() * travelY;
+
+      homepageMark.style.left = `${nextX}px`;
+      homepageMark.style.top = `${nextY}px`;
+    }
+
+    window.addEventListener("resize", moveHomepageMark);
+    window.setTimeout(moveHomepageMark, 500);
+    window.setInterval(moveHomepageMark, 7600);
+  </script>
+</body>
+</html>
